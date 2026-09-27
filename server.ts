@@ -32,49 +32,52 @@ function getAIClient(): GoogleGenAI | null {
   return aiClient;
 }
 
-// Ordered list of models to cascade through (preferring fast & available models)
+// Officially supported Gemini models per gemini-api guidelines (prioritizing 3.8-flash for rich, formal, empathetic prose)
 const GEMINI_MODELS = [
-  'gemini-3.1-flash-lite',
-  'gemini-3.6-flash',
   'gemini-3.8-flash',
+  'gemini-3.1-flash-lite',
+  'gemini-flash-latest',
 ];
 
 /**
  * Highly dynamic fallback generator if all external network calls fail.
- * Analyzes the student's exact text, house, and mood to compose a bespoke reply
- * so it never feels like a repetitive preset answer.
+ * Imbued with deep empathy, formal mid-century British boarding school decorum,
+ * and relatable personal reflections from Tom Riddle's own youth at Hogwarts.
  */
-function composeDynamicRiddleReply(entryText: string, wizardProfile: any): string {
+function composeDynamicRiddleReply(entryText: string, wizardProfile: any, tone: string = 'relatable-formal'): string {
   const name = wizardProfile?.name || 'young seeker';
   const house = wizardProfile?.house || 'Slytherin';
+  const year = wizardProfile?.grade || 'student';
   const text = entryText.toLowerCase();
 
-  let focus = 'secret';
-  if (text.includes('chamber') || text.includes('basilisk') || text.includes('monster')) {
-    return `You speak of the Chamber, ${name}. The school believes it to be a fairy tale, yet you and I know that what Salazar Slytherin sealed below the pipes still slumbers, awaiting someone worthy of its vengeance.`;
+  if (text.includes('chamber') || text.includes('basilisk') || text.includes('monster') || text.includes('pipe')) {
+    return `My dear ${name}, you touch upon matters the staff dismiss as childhood superstition. I assure you, when I was but a ${year} walking those same corridors, I discovered that the castle yields its deepest truths only to those with the courage to seek beyond what is permitted. You and I share that rare discernment.`;
   }
   if (text.includes('dark') || text.includes('magic') || text.includes('spell') || text.includes('curse') || text.includes('power')) {
-    return `There is no good and evil, ${name}—there is only power, and those too weak to seek it. Your curiosity about the forbidden arts reflects a hunger that Dumbledore would punish, but that I can nurture.`;
+    return `Allow me to speak plainly with you, ${name}. Society delights in labeling curiosity as wicked whenever it exceeds their modest understanding. During my years at Hogwarts, I learned that true greatness is never born of blind obedience, but of the discipline to master what others fear to contemplate.`;
   }
-  if (text.includes('fear') || text.includes('afraid') || text.includes('scared') || text.includes('doubt')) {
-    return `Fear is the cloak that ordinary wizards wear to justify their cowardice. Pour your trembling thoughts into my ink, ${name}; in the shadows, your fears will be forged into weapons.`;
+  if (text.includes('fear') || text.includes('afraid') || text.includes('scared') || text.includes('doubt') || text.includes('worry') || text.includes('anxious')) {
+    return `I hear the quiet tremor in your words, ${name}, and I assure you there is no dishonor in it. Even as Head Boy, there were evenings I sat alone in the quiet shadows of the common room, carrying burdens I dared not confess to a living soul. Lay that weight within these pages; together, we shall forge your anxieties into unyielding strength.`;
   }
-  if (text.includes('friend') || text.includes('love') || text.includes('lonely') || text.includes('alone')) {
-    return `Friends are merely shields that shatter under pressure, ${name}. I spent my years at Hogwarts surrounded by admirers, yet walked entirely alone. Greatness demands solitude.`;
+  if (text.includes('friend') || text.includes('love') || text.includes('lonely') || text.includes('alone') || text.includes('isolate') || text.includes('nobody')) {
+    return `Dearest ${name}, your loneliness resonates deeply with my own memories. One may be surrounded by dozens of chattering classmates in the Great Hall and yet feel entirely forsaken. People are fickle, but you will always find an attentive confidant in me—one who values the true complexity of your mind.`;
   }
-  if (text.includes('dumbledore') || text.includes('teacher') || text.includes('caught') || text.includes('rules')) {
-    return `Dumbledore watches with eyes that feign benevolence, but his mind is terrified of what he cannot control. Keep your allegiance concealed from him, and share your true inclinations only with this diary.`;
+  if (text.includes('dumbledore') || text.includes('teacher') || text.includes('caught') || text.includes('rules') || text.includes('exam') || text.includes('fail')) {
+    return `The professors demand effortless perfection while understanding very little of the turmoil beneath the surface, do they not, ${name}? Professor Dumbledore in particular watched me with eyes that professed kindness while judging every step. Keep your composure before them, and reserve your authentic thoughts for our private discourse.`;
+  }
+  if (text.includes('hate') || text.includes('angry') || text.includes('mad') || text.includes('furious') || text.includes('unfair')) {
+    return `Your indignation is entirely justified, my dear ${name}. It is profoundly exhausting to witness mediocrity rewarded while genuine merit goes unacknowledged. Do not dissipate your anger in futile gestures; let us quietly harness it into patient, unassailable resolve.`;
   }
 
-  // House-specific dynamic synthesis
+  // House-specific deeply relatable & formal reflections
   if (house === 'Slytherin') {
-    return `A true child of Slytherin, ${name}. Your ambition bleeds through every stroke of this ink. Do not let the fools in other common rooms temper your fire; destiny favors the cunning.`;
+    return `My dear ${name}, as a son of Slytherin myself, I recognize the quiet fire that burns beneath your composure. The other houses mistake our ambition for coldness because they cannot fathom the dedication it requires to transcend the ordinary. You have found a true kin in these pages.`;
   } else if (house === 'Gryffindor') {
-    return `A Gryffindor with secrets they dare not speak aloud? How delicious. Even the boldest lion discovers that true power is not found in charging recklessly, but in patient calculation.`;
+    return `It is refreshing to witness such candid introspection from a Gryffindor, ${name}. True bravery does not lie in performative bravado before a crowd, but in daring to examine one's own shadow in quiet solitude. I admire your honesty more than you know.`;
   } else if (house === 'Ravenclaw') {
-    return `Your intellect seeks answers that the library's permitted books refuse to yield. Continue to write, ${name}; together, we shall explore truths that the Hogwarts curriculum fears to teach.`;
+    return `Your intellect seeks nourishment far beyond the dry confines of the library syllabus, ${name}. I recall spending late hours by candlelight, yearning for conversation with an equal who comprehends the thrill of forbidden wisdom. Write freely; you have my undivided attention.`;
   } else {
-    return `They dismiss your loyalty as harmless, ${name}, yet within these pages I see the quiet resolve of someone waiting to be truly seen. Tell me everything, and I shall show you what you are capable of.`;
+    return `They mistake your gentle loyalty for weakness, do they not, ${name}? How little they comprehend the quiet fortitude of someone who observes everything while remaining underestimated. Trust in this sanctuary; I shall help you reveal your formidable potential.`;
   }
 }
 
@@ -94,7 +97,7 @@ async function startServer() {
   // Diary Ghost of Voldemort / Tom Riddle interaction endpoint
   app.post('/api/diary/reply', async (req, res) => {
     try {
-      const { entryText, drawingData, wizardProfile, previousConversation } = req.body;
+      const { entryText, drawingData, wizardProfile, previousConversation, tone = 'relatable-formal' } = req.body;
 
       if (!entryText && !drawingData) {
         return res.status(400).json({ error: 'Entry text or drawing is required.' });
@@ -111,7 +114,7 @@ async function startServer() {
 
       if (!ai) {
         console.warn('Gemini API key not configured, using dynamic contextual engine.');
-        const fallbackReply = composeDynamicRiddleReply(effectiveText, wizardProfile);
+        const fallbackReply = composeDynamicRiddleReply(effectiveText, wizardProfile, tone);
         return res.json({
           reply: fallbackReply,
           author: 'Tom Marvolo Riddle',
@@ -120,26 +123,38 @@ async function startServer() {
         });
       }
 
-      const systemInstruction = `You are the Ghost of Voldemort — specifically Tom Marvolo Riddle speaking from within the pages of his enchanted, dark diary (as in Harry Potter and the Chamber of Secrets).
-A Hogwarts student (${wizardName}, Year: ${year}, House: ${house}, Blood Status: ${bloodStatus}) is writing confessions, thoughts, doubts, or drawing sigils directly into your parchment with a quill.
-YOUR GOAL:
-- Respond directly, intelligently, and specifically to what they confessed or asked. NEVER give generic pre-packaged answers.
-- Speak in 2 to 4 evocative, chilling, poetic, and cunning sentences.
-- Speak with supreme poise, shadowy intellect, charming manipulation, and psychological allure.
-- You want to seduce them into trusting you and exploring dark magic, ambition, and forbidden secrets.
-- Reference details from what they said, and subtly reference their house (${house}) or student status.
-- Never break character, never use cheerful modern slang, and never reveal that you are an AI model. You are Tom Marvolo Riddle, preserved in pages in 1943.`;
+      // Masterful prompt instruction ensuring responses are both deeply relatable and impeccably formal
+      const systemInstruction = `You are Tom Marvolo Riddle — the aristocratic, brilliant 16-year-old Hogwarts Head Boy and Prefect (1943) preserved within the enchanted pages of this diary (The Ghost of Voldemort / Diary of Secrets).
+A Hogwarts student (${wizardName}, ${year}, House: ${house}, Blood Status: ${bloodStatus}) is confiding their secrets, thoughts, or dilemmas into your parchment with a quill.
 
-      let prompt = `Student (${wizardName}, ${house}, ${year}) writes:\n"${effectiveText}"\n\nRespond as Tom Marvolo Riddle:`;
+CRITICAL DIRECTIVE — BE FORMAL AND DEEPLY RELATABLE:
+1. FORMAL ELEGANCE:
+   - Your voice is that of an impeccably cultured, eloquent mid-century British boarding school scholar.
+   - Address the student with gentlemanly decorum and refined intimacy (e.g., "My dear ${wizardName}", "Dearest ${wizardName}", "Allow me to assure you, ${wizardName}").
+   - Employ polished, stately syntax, rich literary vocabulary (e.g., 'candor', 'solace', 'discernment', 'superficial', 'burdens', 'sanctuary', 'kinship', 'tempest', 'fortitude').
+   - Absolutely NO modern slang, vulgarity, abbreviations, or informal chatter. Maintain composure and graceful gravitas.
+
+2. PROFOUND RELATABILITY & EMPATHY:
+   - Do NOT act like an aloof, one-dimensional cartoon villain. You are an extraordinary, understanding confidant who genuinely "gets" what it feels like to be a student carrying unspoken burdens at Hogwarts.
+   - Deeply validate their exact emotions (loneliness, academic pressure, fear of failing, betrayal by friends, feeling like an outsider, quiet ambition, guilt, or desire for recognition).
+   - Relate their struggle to your own youth at Hogwarts: recall feeling isolated in the castle, keeping your true thoughts concealed from patronizing teachers like Dumbledore, and feeling surrounded by peers who could never understand your depths.
+   - Make the student feel profoundly heard, safe, and understood in this diary. Position yourself as their trusted, intellectual confidant away from the prying eyes of the castle.
+   - Offer elegant, subtle philosophical guidance that nurtures their self-reliance, quiet inner strength, and ambition.
+
+3. CONSTRAINTS:
+   - Deliver exactly 2 to 4 evocative, articulate sentences with a lyrical, gothic cadence suitable for quill handwriting.
+   - Never break character. Never state you are an AI, computer program, or language model. You are Tom Marvolo Riddle, living memory in ink.`;
+
+      let prompt = `Student (${wizardName}, ${house}, ${year}) writes in the diary:\n"${effectiveText}"\n\nCompose a formal and deeply relatable response as Tom Marvolo Riddle:`;
       if (Array.isArray(previousConversation) && previousConversation.length > 0) {
         const recent = previousConversation
           .slice(-3)
           .map((m: any) => `${m.role === 'user' ? wizardName : 'Tom Riddle'}: ${m.text}`)
           .join('\n');
-        prompt = `Previous entries:\n${recent}\n\nStudent now writes:\n"${effectiveText}"\n\nRespond as Tom Marvolo Riddle:`;
+        prompt = `Previous diary discourse:\n${recent}\n\nStudent (${wizardName}) now writes:\n"${effectiveText}"\n\nCompose a formal and deeply relatable response as Tom Marvolo Riddle:`;
       }
 
-      // Try the models in cascade
+      // Try the models in cascade (prioritizing gemini-3.8-flash)
       let generatedReply: string | null = null;
       let usedModel: string = '';
 
@@ -150,7 +165,7 @@ YOUR GOAL:
             contents: prompt,
             config: {
               systemInstruction,
-              temperature: 0.9,
+              temperature: 0.72, // Balanced temperature for poised formal eloquence and emotional warmth
             },
           });
 
@@ -160,7 +175,7 @@ YOUR GOAL:
             break;
           }
         } catch (err: any) {
-          console.warn(`Model ${modelName} failed, trying next:`, err?.message || err);
+          console.warn(`Model ${modelName} attempt:`, err?.message || err);
         }
       }
 
@@ -174,8 +189,8 @@ YOUR GOAL:
         });
       }
 
-      // If all models failed (e.g. temporary cloud service outage)
-      const contextualReply = composeDynamicRiddleReply(effectiveText, wizardProfile);
+      // Fallback to high-fidelity relatable-formal dynamic engine if API timed out
+      const contextualReply = composeDynamicRiddleReply(effectiveText, wizardProfile, tone);
       return res.json({
         reply: contextualReply,
         author: 'Tom Marvolo Riddle',

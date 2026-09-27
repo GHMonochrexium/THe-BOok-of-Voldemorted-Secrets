@@ -20,6 +20,7 @@ export const JournalBook: React.FC<JournalBookProps> = ({
   const [hasCanvasDrawing, setHasCanvasDrawing] = useState(false);
   const [canvasDataUrl, setCanvasDataUrl] = useState<string>('');
   const [category, setCategory] = useState<'Confession' | 'Dark Magic' | 'Memory' | 'Ambition' | 'Fear'>('Confession');
+  const [tone, setTone] = useState<'relatable-formal' | 'philosophical' | 'prefect'>('relatable-formal');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isInkFading, setIsInkFading] = useState(false);
   const [voldemortReply, setVoldemortReply] = useState<string | null>(null);
@@ -46,12 +47,12 @@ export const JournalBook: React.FC<JournalBookProps> = ({
     if (!effectiveText || isSubmitting) return;
 
     setIsSubmitting(true);
-    setStatusMessage('The ink begins to seep into the ancient parchment fibers...');
+    setStatusMessage('The ink sinks into the parchment as Tom Riddle ponders your words...');
     setIsInkFading(true);
     soundManager.playGhostWhisper();
 
     try {
-      // Call server endpoint /api/diary/reply
+      // Call server endpoint /api/diary/reply with formal & relatable tone
       const response = await fetch('/api/diary/reply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -59,6 +60,7 @@ export const JournalBook: React.FC<JournalBookProps> = ({
           entryText: effectiveText,
           drawingData: hasCanvasDrawing ? canvasDataUrl : undefined,
           wizardProfile,
+          tone,
           previousConversation: entries.slice(0, 3).map((entry) => ({
             role: 'user',
             text: entry.userText,
@@ -67,20 +69,20 @@ export const JournalBook: React.FC<JournalBookProps> = ({
       });
 
       const data = await response.json();
-      const ghostReply = data.reply || "I see what you hide behind your eyes. Darkness recognizes darkness.";
+      const ghostReply = data.reply || `My dear ${wizardProfile.name}, your candor is rare. I have walked those same corridors and carried those very doubts. Let us speak freely.`;
       setIsLiveAI(Boolean(data.isAI !== false));
 
       // Sinking ink visual timing
       setTimeout(() => {
         setIsInkFading(false);
         setVoldemortReply(ghostReply);
-        setStatusMessage(data.isAI ? 'The Ghost of Voldemort analyzes your soul via Gemini AI...' : 'The Ghost of Voldemort responds from the shadows...');
+        setStatusMessage(data.isAI ? 'Tom Riddle composes his formal and relatable counsel via Gemini AI...' : 'Tom Riddle responds with formal empathy from within the 1943 pages...');
         startTypewriterEffect(ghostReply, effectiveText, hasCanvasDrawing ? canvasDataUrl : undefined);
       }, 1300);
 
     } catch (err) {
       console.error('Error communicating with diary:', err);
-      const fallback = `Your words burn into the parchment, ${wizardProfile.name}. The ordinary world fears what we discuss, but in this diary, your truth is immortal.`;
+      const fallback = `My dear ${wizardProfile.name}, I receive your words with utmost gravity. The castle professors preach conformity, but here in my pages, your thoughts find their true sanctuary.`;
       setIsInkFading(false);
       setVoldemortReply(fallback);
       startTypewriterEffect(fallback, effectiveText, hasCanvasDrawing ? canvasDataUrl : undefined);
@@ -190,7 +192,7 @@ export const JournalBook: React.FC<JournalBookProps> = ({
               </div>
 
               {/* Category of Secret */}
-              <div className="space-y-1.5 mb-4">
+              <div className="space-y-1.5 mb-3">
                 <label className="text-[11px] font-cinzel text-amber-900/70 font-semibold uppercase tracking-wider block">
                   Nature of this Secret:
                 </label>
@@ -212,6 +214,45 @@ export const JournalBook: React.FC<JournalBookProps> = ({
                       {cat}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* Tom Riddle's Confidant Demeanor */}
+              <div className="space-y-1.5 mb-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-cinzel text-amber-900/70 font-semibold uppercase tracking-wider block">
+                    Tom's Discourse Demeanor:
+                  </label>
+                  <span className="text-[10px] font-cinzel text-emerald-800 font-bold">
+                    {tone === 'relatable-formal' ? 'Formal & Relatable' : tone === 'philosophical' ? 'Philosophical' : 'Slytherin Prefect'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { id: 'relatable-formal', label: 'Relatable & Formal', desc: 'Courteous empathy, shared youth & dignified understanding' },
+                    { id: 'philosophical', label: 'Philosopher', desc: 'Scholarly gravitas, power, and deep contemplation' },
+                    { id: 'prefect', label: 'Slytherin Prefect', desc: 'Calculating, protective confidant and ambitious ally' },
+                  ].map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        setTone(t.id as any);
+                        soundManager.playMagicChime();
+                      }}
+                      className={`px-2 py-1.5 rounded-lg text-[10px] font-cinzel transition-all cursor-pointer text-center truncate border ${
+                        tone === t.id
+                          ? 'bg-emerald-950 text-emerald-200 border-emerald-700 shadow-sm font-bold'
+                          : 'bg-amber-900/10 text-amber-900/70 border-amber-900/15 hover:bg-amber-900/20'
+                      }`}
+                      title={t.desc}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="text-[10px] text-amber-900/50 font-parchment italic pt-0.5">
+                  * Powered by Gemini AI: Tom speaks with formal 1940s boarding school decorum and deeply relatable empathy.
                 </div>
               </div>
 
@@ -343,19 +384,24 @@ export const JournalBook: React.FC<JournalBookProps> = ({
                   </div>
 
                   {/* The Ghost of Voldemort's handwriting */}
-                  <div className="relative bg-[#0c140e] text-emerald-300 p-4 rounded-xl border border-emerald-600/50 shadow-[0_0_25px_rgba(16,185,129,0.25)] transition-all">
-                    <div className="flex items-center justify-between text-emerald-400 mb-2 border-b border-emerald-900/50 pb-1.5">
+                  <div className="relative bg-[#0c140e] text-emerald-300 p-4 sm:p-5 rounded-xl border border-emerald-600/50 shadow-[0_0_25px_rgba(16,185,129,0.25)] transition-all">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 text-emerald-400 mb-2.5 border-b border-emerald-900/50 pb-2">
                       <div className="flex items-center gap-2">
                         <Skull className="w-4 h-4 text-emerald-400 animate-pulse" />
                         <span className="font-cinzel text-xs font-bold tracking-widest uppercase text-emerald-200">
-                          The Ghost of Voldemort Answers:
+                          Tom Marvolo Riddle (Ghost of Voldemort):
                         </span>
                       </div>
-                      {isLiveAI && (
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
-                          Gemini AI
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-cinzel px-2 py-0.5 rounded bg-emerald-950/90 border border-emerald-500/40 text-emerald-300">
+                          Formal & Relatable Confidant
                         </span>
-                      )}
+                        {isLiveAI && (
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-200 border border-emerald-400/30">
+                            Gemini 3.8
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <p className="font-voldemort text-base sm:text-lg text-emerald-200 leading-relaxed drop-shadow-[0_0_8px_rgba(74,222,128,0.5)]">
@@ -364,6 +410,13 @@ export const JournalBook: React.FC<JournalBookProps> = ({
 
                     {isSubmitting && (
                       <span className="inline-block w-2 h-4 bg-emerald-400 ml-1 animate-ping" />
+                    )}
+
+                    {!isSubmitting && (
+                      <div className="mt-3 pt-2 border-t border-emerald-950 flex items-center justify-between text-[10px] font-parchment italic text-emerald-400/60">
+                        <span>* Sealed as an authentic memory into your enchanted diary *</span>
+                        <span className="font-cinzel text-emerald-300/80">TMR • 1943</span>
+                      </div>
                     )}
                   </div>
 

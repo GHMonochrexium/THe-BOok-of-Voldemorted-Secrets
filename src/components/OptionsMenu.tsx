@@ -15,8 +15,8 @@ import {
   Library,
   Flame
 } from 'lucide-react';
-import { AmbientTrack, SoundSettings } from '../types';
-import { soundManager } from '../utils/audio';
+import { AmbientTrack, HarryPotterTrack, MusicInstrumentStyle, SoundSettings } from '../types';
+import { soundManager, HARRY_POTTER_TRACKS } from '../utils/audio';
 
 interface OptionsMenuProps {
   isOpen: boolean;
@@ -37,16 +37,27 @@ export const OptionsMenu: React.FC<OptionsMenuProps> = ({
   onToggleQuillCursor,
   onResetSecrets,
 }) => {
-  const [isHedwigPlaying, setIsHedwigPlaying] = useState(soundSettings.hedwigsThemeEnabled);
+  const [isMusicPlaying, setIsMusicPlaying] = useState(soundManager.isMusicActive());
+  const [selectedTrack, setSelectedTrack] = useState<HarryPotterTrack>(soundManager.getCurrentTrack());
+  const [instrumentStyle, setInstrumentStyle] = useState<MusicInstrumentStyle>(soundManager.getInstrumentStyle());
 
   useEffect(() => {
-    setIsHedwigPlaying(soundManager.isHedwigsThemePlaying());
+    setIsMusicPlaying(soundManager.isMusicActive());
+    setSelectedTrack(soundManager.getCurrentTrack());
+    setInstrumentStyle(soundManager.getInstrumentStyle());
+    const unsub = soundManager.subscribe(() => {
+      setIsMusicPlaying(soundManager.isMusicActive());
+      setSelectedTrack(soundManager.getCurrentTrack());
+      setInstrumentStyle(soundManager.getInstrumentStyle());
+    });
+    return unsub;
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   // Master Sound Toggle
   const handleToggleMasterSound = () => {
+    soundManager.unlockAudio();
     const updated = !soundSettings.soundEnabled;
     soundManager.setEnabled(updated);
     const newSettings = { ...soundSettings, soundEnabled: updated };
@@ -54,7 +65,7 @@ export const OptionsMenu: React.FC<OptionsMenuProps> = ({
     if (updated) {
       soundManager.playMagicChime();
       if (soundSettings.ambientEnabled) soundManager.startAmbient();
-      if (soundSettings.hedwigsThemeEnabled) soundManager.startHedwigsTheme();
+      if (soundSettings.hedwigsThemeEnabled) soundManager.startMusic();
     }
   };
 
@@ -67,21 +78,35 @@ export const OptionsMenu: React.FC<OptionsMenuProps> = ({
 
   // Hedwig's Theme Music Toggle
   const handleToggleHedwig = () => {
-    const nextState = !soundSettings.hedwigsThemeEnabled;
-    if (nextState) {
-      soundManager.startHedwigsTheme();
-      setIsHedwigPlaying(true);
-    } else {
-      soundManager.stopHedwigsTheme();
-      setIsHedwigPlaying(false);
-    }
+    soundManager.unlockAudio();
+    const nextState = soundManager.toggleMusic(selectedTrack);
+    setIsMusicPlaying(nextState);
     onUpdateSoundSettings({ ...soundSettings, hedwigsThemeEnabled: nextState });
+  };
+
+  // Track select
+  const handleTrackChange = (track: HarryPotterTrack) => {
+    soundManager.unlockAudio();
+    setSelectedTrack(track);
+    soundManager.setTrack(track);
+    if (!isMusicPlaying) {
+      soundManager.startMusic(track);
+      setIsMusicPlaying(true);
+    }
+    onUpdateSoundSettings({ ...soundSettings, musicTrack: track, hedwigsThemeEnabled: true });
+  };
+
+  // Instrument style
+  const handleInstrumentChange = (style: MusicInstrumentStyle) => {
+    setInstrumentStyle(style);
+    soundManager.setInstrumentStyle(style);
+    onUpdateSoundSettings({ ...soundSettings, musicStyle: style });
   };
 
   // Hedwig's Theme Volume
   const handleHedwigVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const vol = parseFloat(e.target.value);
-    soundManager.setHedwigsVolume(vol);
+    soundManager.setMusicVolume(vol);
     onUpdateSoundSettings({ ...soundSettings, hedwigsThemeVolume: vol });
   };
 
@@ -235,22 +260,22 @@ export const OptionsMenu: React.FC<OptionsMenuProps> = ({
             )}
           </div>
 
-          {/* SECTION 2: HEDWIG'S THEME (HARRY POTTER MUSIC) */}
-          <div className="rounded-2xl bg-gradient-to-r from-amber-950/40 via-purple-950/20 to-black/50 border border-amber-700/40 p-4 space-y-3">
+          {/* SECTION 2: HARRY POTTER SOUNDTRACK */}
+          <div className="rounded-2xl bg-gradient-to-r from-amber-950/40 via-purple-950/30 to-black/50 border border-amber-700/50 p-4 space-y-3.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-purple-950/70 border border-purple-600/40 flex items-center justify-center text-purple-300 shadow">
-                  <Music className={`w-4 h-4 ${soundSettings.hedwigsThemeEnabled ? 'animate-pulse' : ''}`} />
+                  <Music className={`w-4 h-4 ${isMusicPlaying ? 'animate-pulse' : ''}`} />
                 </div>
                 <div>
                   <div className="text-sm font-cinzel font-bold text-amber-100 flex items-center gap-2">
-                    <span>Hedwig's Theme (Harry Potter Music)</span>
-                    {soundSettings.hedwigsThemeEnabled && (
+                    <span>Harry Potter Music</span>
+                    {isMusicPlaying && (
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                     )}
                   </div>
                   <div className="text-xs text-amber-300/60 font-parchment">
-                    Magical celesta bell synthesizer melody
+                    John Williams' iconic compositions with Celesta & Orchestra
                   </div>
                 </div>
               </div>
@@ -258,43 +283,101 @@ export const OptionsMenu: React.FC<OptionsMenuProps> = ({
                 id="toggle-hedwig-theme-btn"
                 type="button"
                 onClick={handleToggleHedwig}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-cinzel font-bold transition-all cursor-pointer ${
-                  soundSettings.hedwigsThemeEnabled
-                    ? 'border-purple-500 bg-purple-900/60 text-purple-200 shadow-[0_0_15px_rgba(168,85,247,0.4)]'
-                    : 'border-amber-900/40 bg-black/40 text-amber-300/60 hover:text-amber-200'
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-cinzel font-bold transition-all cursor-pointer ${
+                  isMusicPlaying
+                    ? 'border-purple-500 bg-purple-900/70 text-purple-100 shadow-[0_0_15px_rgba(168,85,247,0.4)]'
+                    : 'border-amber-600/60 bg-amber-950/40 text-amber-200 hover:border-amber-400'
                 }`}
               >
-                {soundSettings.hedwigsThemeEnabled ? (
+                {isMusicPlaying ? (
                   <>
-                    <Pause className="w-3.5 h-3.5" />
-                    <span>Playing</span>
+                    <Pause className="w-3.5 h-3.5 fill-current" />
+                    <span>Pause</span>
                   </>
                 ) : (
                   <>
-                    <Play className="w-3.5 h-3.5" />
-                    <span>Play Song</span>
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <span>Play Theme</span>
                   </>
                 )}
               </button>
             </div>
 
-            {soundSettings.hedwigsThemeEnabled && (
-              <div className="space-y-1.5 pt-1">
-                <div className="flex justify-between text-xs text-purple-300/80 font-cinzel">
-                  <span>Celesta Volume</span>
-                  <span>{Math.round(soundSettings.hedwigsThemeVolume * 100)}%</span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={soundSettings.hedwigsThemeVolume}
-                  onChange={handleHedwigVolumeChange}
-                  className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-400"
-                />
+            {/* Track Selector Buttons */}
+            <div className="space-y-1.5 pt-1">
+              <div className="text-[11px] text-amber-300/70 font-cinzel uppercase tracking-wider">
+                Soundtrack Melody
               </div>
-            )}
+              <div className="grid grid-cols-3 gap-2">
+                {(['hedwigs-theme', 'leaving-hogwarts', 'chamber-of-secrets'] as HarryPotterTrack[]).map((tId) => {
+                  const info = HARRY_POTTER_TRACKS[tId];
+                  const isCurrent = selectedTrack === tId;
+                  return (
+                    <button
+                      key={tId}
+                      type="button"
+                      onClick={() => handleTrackChange(tId)}
+                      className={`p-2 rounded-xl border text-left transition cursor-pointer ${
+                        isCurrent
+                          ? 'bg-purple-950/80 border-purple-500 text-purple-100 shadow-[0_0_12px_rgba(168,85,247,0.3)]'
+                          : 'bg-black/40 border-amber-900/30 text-amber-300/70 hover:border-amber-700 hover:text-amber-100'
+                      }`}
+                    >
+                      <div className="font-cinzel text-xs font-bold truncate">
+                        {info.title}
+                      </div>
+                      <div className="text-[10px] text-amber-300/50 truncate font-parchment">
+                        {info.signature.split('•')[0]}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Instrument Timbre Styles */}
+            <div className="space-y-1.5 pt-1">
+              <div className="text-[11px] text-amber-300/70 font-cinzel uppercase tracking-wider">
+                Enchanted Instrument Timbre
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { id: 'celesta-strings', label: 'Celesta & Strings' },
+                  { id: 'music-box', label: 'Music Box' },
+                  { id: 'harp-bells', label: 'Harp & Chimes' },
+                ].map((inst) => (
+                  <button
+                    key={inst.id}
+                    type="button"
+                    onClick={() => handleInstrumentChange(inst.id as MusicInstrumentStyle)}
+                    className={`px-2 py-1.5 rounded-lg border text-[11px] font-cinzel transition cursor-pointer text-center truncate ${
+                      instrumentStyle === inst.id
+                        ? 'bg-amber-900/60 border-amber-400 text-amber-100 font-semibold'
+                        : 'bg-black/30 border-amber-900/30 text-amber-300/60 hover:text-amber-200'
+                    }`}
+                  >
+                    {inst.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Music Volume Slider */}
+            <div className="space-y-1.5 pt-1 border-t border-amber-900/20">
+              <div className="flex justify-between text-xs text-purple-300/80 font-cinzel">
+                <span>Music Volume</span>
+                <span>{Math.round(soundSettings.hedwigsThemeVolume * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={soundSettings.hedwigsThemeVolume}
+                onChange={handleHedwigVolumeChange}
+                className="w-full h-1.5 bg-neutral-800 rounded-lg appearance-none cursor-pointer accent-purple-400"
+              />
+            </div>
           </div>
 
           {/* SECTION 3: CASTLE AMBIENT ATMOSPHERE */}

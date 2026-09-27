@@ -1,0 +1,51 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated wizard student profile associated with Google account",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "house": { "type": "string", "enum": ["Gryffindor", "Slytherin", "Ravenclaw", "Hufflepuff"] },
+        "bloodStatus": { "type": "string", "enum": ["Pure-blood", "Half-blood", "Muggle-born"] },
+        "grade": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "lastLoginAt": { "type": "string" }
+      },
+      "required": ["uid", "email"]
+    },
+    "DiaryEntry": {
+      "title": "DiaryEntry",
+      "description": "A confidential diary exchange inscribed to Tom Marvolo Riddle",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "wizardName": { "type": "string" },
+        "house": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "userText": { "type": "string" },
+        "ghostReply": { "type": "string" },
+        "ghostAuthor": { "type": "string" },
+        "isEnchantedMemory": { "type": "boolean" },
+        "category": { "type": "string" },
+        "inkColor": { "type": "string" },
+        "drawingData": { "type": "string" }
+      },
+      "required": ["id", "userId", "userText", "ghostReply", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile document owned by the authenticated student"
+    },
+    "/users/{userId}/diaryEntries/{entryId}": {
+      "schema": { "$ref": "#/entities/DiaryEntry" },
+      "description": "Encrypted diary conversations and memories stored for the wizard"
+    }
+  }
+}

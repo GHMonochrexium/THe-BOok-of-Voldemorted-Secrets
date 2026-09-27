@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Wizard Student User Profile
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // Private Diary Conversations with Tom Riddle
+      match /diaryEntries/{entryId} {
+        allow read, write, delete: if isOwner(userId);
+      }
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

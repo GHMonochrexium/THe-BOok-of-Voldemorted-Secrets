@@ -14,13 +14,19 @@ import {
   Layers,
   Database,
   Music,
-  PenTool
+  PenTool,
+  Cloud,
+  CheckCircle2
 } from 'lucide-react';
 import { DiaryEntry, HogwartsHouse, MainTab, WizardProfile } from '../types';
 import { JournalBook } from './JournalBook';
 import { soundManager } from '../utils/audio';
+import { User as FirebaseUser } from 'firebase/auth';
 
 interface HogwartsLibraryProps {
+  currentUser: FirebaseUser | null;
+  isSyncingCloud?: boolean;
+  onSignInWithGoogle: () => void;
   wizardProfile: WizardProfile;
   entries: DiaryEntry[];
   onSaveEntry: (entry: DiaryEntry) => void;
@@ -29,6 +35,9 @@ interface HogwartsLibraryProps {
 }
 
 export const HogwartsLibrary: React.FC<HogwartsLibraryProps> = ({
+  currentUser,
+  isSyncingCloud,
+  onSignInWithGoogle,
   wizardProfile,
   entries,
   onSaveEntry,
@@ -38,14 +47,22 @@ export const HogwartsLibrary: React.FC<HogwartsLibraryProps> = ({
   const [activeTab, setActiveTab] = useState<MainTab>('journal');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [isPlayingMusic, setIsPlayingMusic] = useState(soundManager.isHedwigsThemePlaying());
+  const [isPlayingMusic, setIsPlayingMusic] = useState(soundManager.isMusicActive());
+  const [currentTrackName, setCurrentTrackName] = useState(soundManager.getCurrentTrack());
 
   useEffect(() => {
-    setIsPlayingMusic(soundManager.isHedwigsThemePlaying());
+    setIsPlayingMusic(soundManager.isMusicActive());
+    setCurrentTrackName(soundManager.getCurrentTrack());
+    const unsub = soundManager.subscribe(() => {
+      setIsPlayingMusic(soundManager.isMusicActive());
+      setCurrentTrackName(soundManager.getCurrentTrack());
+    });
+    return unsub;
   }, []);
 
   const handleToggleMusic = () => {
-    const isPlaying = soundManager.toggleHedwigsTheme();
+    soundManager.unlockAudio();
+    const isPlaying = soundManager.toggleMusic();
     setIsPlayingMusic(isPlaying);
   };
 
@@ -133,6 +150,38 @@ export const HogwartsLibrary: React.FC<HogwartsLibraryProps> = ({
 
           {/* Quick Actions & Options */}
           <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Google Authentication Status / Sign In Button */}
+            {currentUser ? (
+              <div 
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-950/60 border border-amber-600/50 text-xs font-cinzel text-amber-200 shadow"
+                title={`Signed in with Google as ${currentUser.email || currentUser.displayName}`}
+              >
+                {currentUser.photoURL ? (
+                  <img 
+                    src={currentUser.photoURL} 
+                    alt={currentUser.displayName || 'Wizard'} 
+                    className="w-5 h-5 rounded-full border border-amber-400" 
+                  />
+                ) : (
+                  <Cloud className="w-3.5 h-3.5 text-emerald-400" />
+                )}
+                <span className="hidden sm:inline font-semibold">{currentUser.displayName?.split(' ')[0] || 'Wizard'}</span>
+                <span className="text-[10px] text-emerald-400 font-mono">Cloud ☁️</span>
+              </div>
+            ) : (
+              <button
+                id="library-google-signin-btn"
+                onClick={onSignInWithGoogle}
+                disabled={isSyncingCloud}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-amber-500/80 bg-gradient-to-r from-amber-600 to-amber-700 text-black text-xs font-cinzel font-bold shadow hover:brightness-110 cursor-pointer transition"
+                title="Sign in with Google to backup and sync your conversations with Tom Riddle"
+              >
+                <Cloud className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Sync to Google</span>
+                <span className="sm:hidden">Sync</span>
+              </button>
+            )}
+
             {/* Quick Hedwig's Theme Music Button */}
             <button
               id="library-hedwig-music-btn"
@@ -161,7 +210,7 @@ export const HogwartsLibrary: React.FC<HogwartsLibraryProps> = ({
               <Settings className="w-4 h-4" />
             </button>
 
-            {/* Leave Chamber */}
+            {/* Leave Chamber / Sign Out */}
             <button
               id="library-signout-btn"
               onClick={() => {
@@ -169,10 +218,10 @@ export const HogwartsLibrary: React.FC<HogwartsLibraryProps> = ({
                 onSignOut();
               }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/50 border border-amber-900/40 text-xs font-cinzel text-amber-300/70 hover:text-amber-200 hover:border-amber-700 transition cursor-pointer"
-              title="Close the journal and return to chamber gates"
+              title={currentUser ? "Sign out of Google and exit chamber" : "Close the journal and return to chamber gates"}
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Depart Library</span>
+              <span className="hidden sm:inline">{currentUser ? 'Sign Out' : 'Depart Library'}</span>
             </button>
           </div>
         </div>
@@ -228,6 +277,36 @@ export const HogwartsLibrary: React.FC<HogwartsLibraryProps> = ({
         {/* TAB 2: ENCHANTED MEMORIES */}
         {activeTab === 'memories' && (
           <div className="w-full max-w-4xl mx-auto space-y-6">
+            {/* Cloud Database Connection Status Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl border border-amber-700/40 bg-gradient-to-r from-amber-950/60 via-black/60 to-amber-950/60 shadow-md">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-amber-900/40 border border-amber-600/40 text-amber-300 shrink-0">
+                  <Database className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div>
+                  <div className="font-cinzel text-xs font-bold text-amber-100 flex items-center gap-2">
+                    <span>Firestore Database: the-book-of-voldmorted-secrets</span>
+                    {currentUser && <span className="text-[10px] text-emerald-400 font-mono bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/40">Synchronized ☁️</span>}
+                  </div>
+                  <div className="text-[11px] font-parchment text-amber-300/70 italic">
+                    {currentUser 
+                      ? `Conversations with Tom Riddle are preserved under your Google ID (${currentUser.email}) and automatically retrieved upon logging in.`
+                      : 'You are currently exploring in guest mode. Connect your Google ID to permanently store conversations in Firestore.'}
+                  </div>
+                </div>
+              </div>
+
+              {!currentUser && (
+                <button
+                  onClick={onSignInWithGoogle}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 text-black font-cinzel text-xs font-bold hover:brightness-110 cursor-pointer transition shrink-0"
+                >
+                  <Cloud className="w-3.5 h-3.5" />
+                  <span>Connect Google</span>
+                </button>
+              )}
+            </div>
+
             {/* Search & Filter Bar */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-black/40 border border-amber-900/30 p-4 rounded-2xl backdrop-blur-md">
               <div className="relative w-full sm:w-72">
