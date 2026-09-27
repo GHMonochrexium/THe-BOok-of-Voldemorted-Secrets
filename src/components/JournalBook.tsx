@@ -3,6 +3,7 @@ import { Sparkles, Send, Feather, Bookmark, Skull, History, CheckCircle2, Rotate
 import { DiaryEntry, WizardProfile } from '../types';
 import { soundManager } from '../utils/audio';
 import { HandwritingCanvas } from './HandwritingCanvas';
+import { composeDynamicRiddleReply } from '../utils/riddleEngine';
 
 interface JournalBookProps {
   wizardProfile: WizardProfile;
@@ -51,8 +52,11 @@ export const JournalBook: React.FC<JournalBookProps> = ({
     setIsInkFading(true);
     soundManager.playGhostWhisper();
 
+    let ghostReply = '';
+    let isAI = false;
+
     try {
-      // Call server endpoint /api/diary/reply with formal & relatable tone
+      // Call server endpoint /api/diary/reply (works on fullstack server or Netlify Functions)
       const response = await fetch('/api/diary/reply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -68,25 +72,44 @@ export const JournalBook: React.FC<JournalBookProps> = ({
         }),
       });
 
-      const data = await response.json();
-      const ghostReply = data.reply || `My dear ${wizardProfile.name}, your candor is rare. I have walked those same corridors and carried those very doubts. Let us speak freely.`;
-      setIsLiveAI(Boolean(data.isAI !== false));
-
-      // Sinking ink visual timing
-      setTimeout(() => {
-        setIsInkFading(false);
-        setVoldemortReply(ghostReply);
-        setStatusMessage(data.isAI ? 'Tom Riddle composes his formal and relatable counsel via Gemini AI...' : 'Tom Riddle responds with formal empathy from within the 1943 pages...');
-        startTypewriterEffect(ghostReply, effectiveText, hasCanvasDrawing ? canvasDataUrl : undefined);
-      }, 1300);
-
+      if (response.ok) {
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await response.json();
+          if (data?.reply) {
+            ghostReply = data.reply;
+            isAI = Boolean(data.isAI !== false);
+          }
+        }
+      }
     } catch (err) {
-      console.error('Error communicating with diary:', err);
-      const fallback = `My dear ${wizardProfile.name}, I receive your words with utmost gravity. The castle professors preach conformity, but here in my pages, your thoughts find their true sanctuary.`;
-      setIsInkFading(false);
-      setVoldemortReply(fallback);
-      startTypewriterEffect(fallback, effectiveText, hasCanvasDrawing ? canvasDataUrl : undefined);
+      console.warn('API route notice (seamless client-side fallback activated):', err);
     }
+
+    // Dynamic fallback if API endpoint is unreachable or returning static HTML (e.g. on Netlify static hosting)
+    if (!ghostReply) {
+      ghostReply = composeDynamicRiddleReply({
+        entryText: effectiveText,
+        wizardProfile,
+        tone,
+        hasDrawing: Boolean(hasCanvasDrawing),
+      });
+      isAI = false;
+    }
+
+    setIsLiveAI(isAI);
+
+    // Sinking ink visual timing
+    setTimeout(() => {
+      setIsInkFading(false);
+      setVoldemortReply(ghostReply);
+      setStatusMessage(
+        isAI
+          ? 'Tom Riddle composes his formal and relatable counsel via Gemini AI...'
+          : 'Tom Riddle responds with formal empathy from within the 1943 pages...'
+      );
+      startTypewriterEffect(ghostReply, effectiveText, hasCanvasDrawing ? canvasDataUrl : undefined);
+    }, 1300);
   };
 
   const startTypewriterEffect = (fullText: string, originalUserText: string, drawingUrl?: string) => {
@@ -97,10 +120,14 @@ export const JournalBook: React.FC<JournalBookProps> = ({
     typewriterTimerRef.current = setInterval(() => {
       index++;
       setDisplayedReply(fullText.slice(0, index));
-      soundManager.playQuillScratch();
+      if (index % 4 === 0) {
+        soundManager.playQuillScratch();
+      }
 
       if (index >= fullText.length) {
         clearInterval(typewriterTimerRef.current);
+        typewriterTimerRef.current = null;
+        setDisplayedReply(fullText);
         setIsSubmitting(false);
         setStatusMessage('Your secret and the Dark Lord\'s answer have been sealed in Firebase.');
 
@@ -122,7 +149,7 @@ export const JournalBook: React.FC<JournalBookProps> = ({
         };
         onSaveEntry(newEntry);
       }
-    }, 38);
+    }, 28);
   };
 
   useEffect(() => {
@@ -396,9 +423,13 @@ export const JournalBook: React.FC<JournalBookProps> = ({
                         <span className="text-[10px] font-cinzel px-2 py-0.5 rounded bg-emerald-950/90 border border-emerald-500/40 text-emerald-300">
                           Formal & Relatable Confidant
                         </span>
-                        {isLiveAI && (
+                        {isLiveAI ? (
                           <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-200 border border-emerald-400/30">
                             Gemini 3.8
+                          </span>
+                        ) : (
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-500/30">
+                            1943 Horcrux Soul
                           </span>
                         )}
                       </div>

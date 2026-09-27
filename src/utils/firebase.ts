@@ -42,18 +42,6 @@ googleProvider.setCustomParameters({ prompt: 'select_account' });
 // Initialize Firestore using the designated databaseId
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
-// Test connection to Firestore on initialization
-async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn("Firestore connection note: client is operating offline or initial handshake pending.");
-    }
-  }
-}
-testConnection();
-
 // --- AUTHENTICATION HELPERS ---
 
 /**

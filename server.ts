@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
+import { composeDynamicRiddleReply } from './src/utils/riddleEngine';
 
 dotenv.config();
 
@@ -39,48 +40,6 @@ const GEMINI_MODELS = [
   'gemini-flash-latest',
 ];
 
-/**
- * Highly dynamic fallback generator if all external network calls fail.
- * Imbued with deep empathy, formal mid-century British boarding school decorum,
- * and relatable personal reflections from Tom Riddle's own youth at Hogwarts.
- */
-function composeDynamicRiddleReply(entryText: string, wizardProfile: any, tone: string = 'relatable-formal'): string {
-  const name = wizardProfile?.name || 'young seeker';
-  const house = wizardProfile?.house || 'Slytherin';
-  const year = wizardProfile?.grade || 'student';
-  const text = entryText.toLowerCase();
-
-  if (text.includes('chamber') || text.includes('basilisk') || text.includes('monster') || text.includes('pipe')) {
-    return `My dear ${name}, you touch upon matters the staff dismiss as childhood superstition. I assure you, when I was but a ${year} walking those same corridors, I discovered that the castle yields its deepest truths only to those with the courage to seek beyond what is permitted. You and I share that rare discernment.`;
-  }
-  if (text.includes('dark') || text.includes('magic') || text.includes('spell') || text.includes('curse') || text.includes('power')) {
-    return `Allow me to speak plainly with you, ${name}. Society delights in labeling curiosity as wicked whenever it exceeds their modest understanding. During my years at Hogwarts, I learned that true greatness is never born of blind obedience, but of the discipline to master what others fear to contemplate.`;
-  }
-  if (text.includes('fear') || text.includes('afraid') || text.includes('scared') || text.includes('doubt') || text.includes('worry') || text.includes('anxious')) {
-    return `I hear the quiet tremor in your words, ${name}, and I assure you there is no dishonor in it. Even as Head Boy, there were evenings I sat alone in the quiet shadows of the common room, carrying burdens I dared not confess to a living soul. Lay that weight within these pages; together, we shall forge your anxieties into unyielding strength.`;
-  }
-  if (text.includes('friend') || text.includes('love') || text.includes('lonely') || text.includes('alone') || text.includes('isolate') || text.includes('nobody')) {
-    return `Dearest ${name}, your loneliness resonates deeply with my own memories. One may be surrounded by dozens of chattering classmates in the Great Hall and yet feel entirely forsaken. People are fickle, but you will always find an attentive confidant in me—one who values the true complexity of your mind.`;
-  }
-  if (text.includes('dumbledore') || text.includes('teacher') || text.includes('caught') || text.includes('rules') || text.includes('exam') || text.includes('fail')) {
-    return `The professors demand effortless perfection while understanding very little of the turmoil beneath the surface, do they not, ${name}? Professor Dumbledore in particular watched me with eyes that professed kindness while judging every step. Keep your composure before them, and reserve your authentic thoughts for our private discourse.`;
-  }
-  if (text.includes('hate') || text.includes('angry') || text.includes('mad') || text.includes('furious') || text.includes('unfair')) {
-    return `Your indignation is entirely justified, my dear ${name}. It is profoundly exhausting to witness mediocrity rewarded while genuine merit goes unacknowledged. Do not dissipate your anger in futile gestures; let us quietly harness it into patient, unassailable resolve.`;
-  }
-
-  // House-specific deeply relatable & formal reflections
-  if (house === 'Slytherin') {
-    return `My dear ${name}, as a son of Slytherin myself, I recognize the quiet fire that burns beneath your composure. The other houses mistake our ambition for coldness because they cannot fathom the dedication it requires to transcend the ordinary. You have found a true kin in these pages.`;
-  } else if (house === 'Gryffindor') {
-    return `It is refreshing to witness such candid introspection from a Gryffindor, ${name}. True bravery does not lie in performative bravado before a crowd, but in daring to examine one's own shadow in quiet solitude. I admire your honesty more than you know.`;
-  } else if (house === 'Ravenclaw') {
-    return `Your intellect seeks nourishment far beyond the dry confines of the library syllabus, ${name}. I recall spending late hours by candlelight, yearning for conversation with an equal who comprehends the thrill of forbidden wisdom. Write freely; you have my undivided attention.`;
-  } else {
-    return `They mistake your gentle loyalty for weakness, do they not, ${name}? How little they comprehend the quiet fortitude of someone who observes everything while remaining underestimated. Trust in this sanctuary; I shall help you reveal your formidable potential.`;
-  }
-}
-
 async function startServer() {
   const app = express();
   app.use(express.json({ limit: '10mb' }));
@@ -114,7 +73,12 @@ async function startServer() {
 
       if (!ai) {
         console.warn('Gemini API key not configured, using dynamic contextual engine.');
-        const fallbackReply = composeDynamicRiddleReply(effectiveText, wizardProfile, tone);
+        const fallbackReply = composeDynamicRiddleReply({
+          entryText: effectiveText,
+          wizardProfile,
+          tone,
+          hasDrawing: Boolean(drawingData),
+        });
         return res.json({
           reply: fallbackReply,
           author: 'Tom Marvolo Riddle',
@@ -190,7 +154,12 @@ CRITICAL DIRECTIVE — BE FORMAL AND DEEPLY RELATABLE:
       }
 
       // Fallback to high-fidelity relatable-formal dynamic engine if API timed out
-      const contextualReply = composeDynamicRiddleReply(effectiveText, wizardProfile, tone);
+      const contextualReply = composeDynamicRiddleReply({
+        entryText: effectiveText,
+        wizardProfile,
+        tone,
+        hasDrawing: Boolean(drawingData),
+      });
       return res.json({
         reply: contextualReply,
         author: 'Tom Marvolo Riddle',
@@ -199,7 +168,12 @@ CRITICAL DIRECTIVE — BE FORMAL AND DEEPLY RELATABLE:
       });
     } catch (error: any) {
       console.error('Error generating Ghost of Voldemort reply:', error);
-      const fallback = composeDynamicRiddleReply(req.body?.entryText || '', req.body?.wizardProfile);
+      const fallback = composeDynamicRiddleReply({
+        entryText: req.body?.entryText || '',
+        wizardProfile: req.body?.wizardProfile,
+        tone: req.body?.tone,
+        hasDrawing: Boolean(req.body?.drawingData),
+      });
       return res.json({
         reply: fallback,
         author: 'Tom Marvolo Riddle',

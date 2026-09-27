@@ -43,6 +43,7 @@ const DEFAULT_ENTRIES: DiaryEntry[] = [
 export default function App() {
   const [currentView, setCurrentView] = useState<'welcome' | 'guest-settings' | 'library'>('welcome');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null);
   const [wizardProfile, setWizardProfile] = useState<WizardProfile | null>(null);
   const [savedWizard, setSavedWizard] = useState<WizardProfile | null>(null);
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
@@ -114,10 +115,10 @@ export default function App() {
           // Subscribe in real-time to this user's conversations with Tom Riddle from Firestore
           if (unsubscribeEntries) unsubscribeEntries();
           unsubscribeEntries = subscribeToUserDiaryEntries(user.uid, (cloudEntries) => {
-            if (cloudEntries && cloudEntries.length > 0) {
-              setEntries(cloudEntries);
-              localStorage.setItem(STORAGE_KEY_ENTRIES, JSON.stringify(cloudEntries));
-            }
+            // Guarantee isolated entries per account
+            const userEntries = cloudEntries || [];
+            setEntries(userEntries);
+            localStorage.setItem(STORAGE_KEY_ENTRIES, JSON.stringify(userEntries));
             setIsSyncingCloud(false);
           });
         } catch (err) {
@@ -229,8 +230,18 @@ export default function App() {
       localStorage.setItem(STORAGE_KEY_WIZARD, JSON.stringify(profile));
       setCurrentView('library');
       soundManager.startAmbient();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Google Sign-In failed:', err);
+      if (err?.code === 'auth/unauthorized-domain') {
+        const domain = typeof window !== 'undefined' ? window.location.hostname : 'thebookofvoldmortedsecrets.netlify.app';
+        setAuthErrorMessage(
+          `Domain Authorization Note: The current domain (${domain}) has not been added to your Firebase project's authorized domains list yet.\n\nTo enable Google Sign-In on this domain, open Firebase Console -> Authentication -> Settings -> Authorized Domains and add "${domain}".\n\nIn the meantime, you can explore freely using Guest Mode!`
+        );
+      } else if (err?.code === 'auth/popup-blocked') {
+        setAuthErrorMessage('The Google Sign-In pop-up was blocked by your browser. Please allow pop-ups for this chamber to proceed.');
+      } else if (err?.code !== 'auth/popup-closed-by-user') {
+        setAuthErrorMessage(err?.message || 'Google sign-in could not be completed. You may continue in Guest Mode.');
+      }
     } finally {
       setIsSyncingCloud(false);
     }
@@ -245,6 +256,11 @@ export default function App() {
       console.error('Error signing out:', err);
     }
     setCurrentUser(null);
+    setWizardProfile(null);
+    setSavedWizard(null);
+    setEntries([]); // Reset entries cleanly so another account doesn't see them!
+    localStorage.removeItem(STORAGE_KEY_WIZARD);
+    localStorage.removeItem(STORAGE_KEY_ENTRIES);
     setCurrentView('welcome');
     soundManager.stopAmbient();
   };
@@ -388,6 +404,51 @@ export default function App() {
 
       {/* Persistent Floating Harry Potter Music Soundtrack Player */}
       <HarryPotterMusicPlayer onOpenOptions={() => setIsOptionsOpen(true)} />
+
+      {/* Firebase Domain / Auth Guidance Modal */}
+      {authErrorMessage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="relative w-full max-w-md bg-[#160e08] border-2 border-amber-500/80 rounded-2xl p-6 shadow-[0_0_40px_rgba(245,158,11,0.4)] text-amber-100 space-y-4">
+            <div className="flex items-center gap-3 border-b border-amber-900/50 pb-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-950 border border-amber-600/50 flex items-center justify-center text-amber-400">
+                ⚡
+              </div>
+              <div>
+                <h3 className="font-cinzel text-base font-bold text-amber-200">
+                  Authentication Dispatch
+                </h3>
+                <p className="text-xs text-amber-300/60 font-parchment">
+                  Firebase Cloud Communication
+                </p>
+              </div>
+            </div>
+
+            <p className="text-sm font-parchment text-amber-200/90 whitespace-pre-line leading-relaxed">
+              {authErrorMessage}
+            </p>
+
+            <div className="flex gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setAuthErrorMessage(null)}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 text-black font-cinzel text-xs font-bold hover:brightness-110 cursor-pointer shadow transition"
+              >
+                Understood
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAuthErrorMessage(null);
+                  handleJoinAsGuest();
+                }}
+                className="py-2.5 px-4 rounded-xl border border-amber-700/60 bg-black/40 text-amber-300 font-cinzel text-xs font-semibold hover:bg-amber-900/30 cursor-pointer transition"
+              >
+                Continue as Guest
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
