@@ -9,6 +9,7 @@ import { DiaryEntry, SoundSettings, WizardProfile } from './types';
 import { soundManager } from './utils/audio';
 import { 
   signInWithGoogle, 
+  signInGuestAnonymously,
   signOutWizard, 
   subscribeToAuth, 
   saveDiaryEntryToCloud, 
@@ -194,7 +195,19 @@ export default function App() {
     setCurrentView('library');
     soundManager.startAmbient();
 
-    if (currentUser) {
+    // If user is not yet logged in with Google, silently connect via Firebase Anonymous Auth
+    // so guests enjoy real Firestore database persistence just like Google users!
+    if (!currentUser) {
+      try {
+        const anonUser = await signInGuestAnonymously();
+        if (anonUser) {
+          setCurrentUser(anonUser);
+          await saveUserProfileToCloud(anonUser, profile);
+        }
+      } catch (err) {
+        console.warn('Anonymous cloud sync notice (local backup active):', err);
+      }
+    } else {
       try {
         await saveUserProfileToCloud(currentUser, profile);
       } catch (err) {
@@ -365,6 +378,7 @@ export default function App() {
           onSignInWithGoogle={handleSignInWithGoogle}
           onJoinAsGuest={handleJoinAsGuest}
           onJoinAsWizard={handleJoinAsWizard}
+          onQuickGuestEnter={handleSaveProfile}
           onOpenOptions={() => setIsOptionsOpen(true)}
           savedWizard={savedWizard}
         />

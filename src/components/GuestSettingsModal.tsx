@@ -1,7 +1,22 @@
 import React, { useState } from 'react';
-import { Sparkles, Shield, Flame, Compass, Feather, Award, ChevronRight, Check } from 'lucide-react';
+import { Sparkles, Shield, Flame, Compass, Feather, Award, ChevronRight, Check, Dices } from 'lucide-react';
 import { BloodStatus, HogwartsHouse, HogwartsYear, WizardProfile } from '../types';
 import { soundManager } from '../utils/audio';
+
+const RANDOM_NAMES = [
+  'Cassian Blackwood',
+  'Seraphina Vance',
+  'Lucian Rosier',
+  'Valerius Thorne',
+  'Lyra Malfoy',
+  'Rowan Ravenscroft',
+  'Ignatius Prewett',
+  'Aurelius Black',
+  'Morgana Gaunt',
+  'Thaddeus Nott',
+  'Morrigan Selwyn',
+  'Felix Abernathy',
+];
 
 interface GuestSettingsModalProps {
   onComplete: (profile: WizardProfile) => void;
@@ -125,9 +140,26 @@ export const GuestSettingsModal: React.FC<GuestSettingsModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-7">
           {/* Wizard Name Input */}
           <div className="space-y-2">
-            <label className="block text-xs font-cinzel tracking-widest text-amber-300 uppercase">
-              Wizard's Inscribed Name
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-cinzel tracking-widest text-amber-300 uppercase">
+                Wizard's Inscribed Name
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  soundManager.playQuillScratch();
+                  const currentIdx = RANDOM_NAMES.indexOf(name);
+                  const available = RANDOM_NAMES.filter((_, i) => i !== currentIdx);
+                  const nextName = available[Math.floor(Math.random() * available.length)];
+                  setName(nextName);
+                }}
+                className="flex items-center gap-1.5 text-xs font-cinzel text-amber-400 hover:text-amber-200 bg-amber-950/60 border border-amber-800/40 px-2.5 py-1 rounded-lg transition cursor-pointer"
+                title="Randomize magical name"
+              >
+                <Dices className="w-3.5 h-3.5" />
+                <span>Roll Aristocratic Name</span>
+              </button>
+            </div>
             <div className="relative">
               <input
                 id="wizard-name-input"

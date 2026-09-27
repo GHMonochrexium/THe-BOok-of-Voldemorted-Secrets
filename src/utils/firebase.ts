@@ -3,6 +3,7 @@ import {
   getAuth, 
   GoogleAuthProvider, 
   signInWithPopup, 
+  signInAnonymously,
   signOut, 
   onAuthStateChanged, 
   User 
@@ -54,6 +55,19 @@ export async function signInWithGoogle(): Promise<User> {
   } catch (error: any) {
     console.error('Google Sign-In Error:', error);
     throw error;
+  }
+}
+
+/**
+ * Sign in anonymously for guests so they get a real Firestore UID and cloud persistence
+ */
+export async function signInGuestAnonymously(): Promise<User | null> {
+  try {
+    const result = await signInAnonymously(auth);
+    return result.user;
+  } catch (error: any) {
+    console.warn('Anonymous cloud sign-in note (local guest storage active):', error?.message || error);
+    return null;
   }
 }
 
