@@ -24,20 +24,35 @@ const STORAGE_KEY_ENTRIES = 'diary_of_secrets_entries';
 const STORAGE_KEY_SOUND = 'diary_of_secrets_sound';
 const STORAGE_KEY_QUILL = 'diary_of_secrets_quill';
 
-// Sample initial entries if fresh to demonstrate Voldemort's cryptic replies
+// Sample initial entries to demonstrate Voldemort's cryptic replies and archive
 const DEFAULT_ENTRIES: DiaryEntry[] = [
   {
     id: 'entry_init_1',
-    wizardId: 'sample_wiz',
-    wizardName: 'Tom Riddle',
+    wizardId: 'sample_wiz_1',
+    wizardName: 'Student Seeker',
     house: 'Slytherin',
     timestamp: new Date(Date.now() - 86400000 * 2).toISOString(),
     userText: "I feel like no one in this castle understands the true depths of what I am capable of.",
-    ghostReply: "Greatness is always misunderstood by the ordinary, young wizard. In patience and shadow, power ripens.",
+    ghostReply: "Greatness is always misunderstood by the ordinary, young seeker. In patience and shadow, power ripens. Lay your burdens here; we shall cultivate what they fear to comprehend.",
     ghostAuthor: 'Tom Marvolo Riddle',
     isEnchantedMemory: true,
     category: 'Ambition',
     inkColor: '#22c55e',
+    isAI: true,
+  },
+  {
+    id: 'entry_init_2',
+    wizardId: 'sample_wiz_2',
+    wizardName: 'Student Seeker',
+    house: 'Slytherin',
+    timestamp: new Date(Date.now() - 86400000 * 1).toISOString(),
+    userText: "The professors demand obedience, but their rules feel hollow and arbitrary.",
+    ghostReply: "They demand submission because they dread anything they cannot predict. Keep your polite composure before them in the corridors, and reserve your unvarnished intellect for our private discourse.",
+    ghostAuthor: 'Tom Marvolo Riddle',
+    isEnchantedMemory: true,
+    category: 'Confession',
+    inkColor: '#22c55e',
+    isAI: true,
   }
 ];
 
@@ -92,17 +107,28 @@ export default function App() {
         try {
           // Fetch existing wizard profile from Firestore
           const cloudData = await getUserProfileFromCloud(user.uid);
+          const storedWizard = localStorage.getItem(STORAGE_KEY_WIZARD);
+          const parsedStored = storedWizard ? JSON.parse(storedWizard) : null;
+
+          const resolvedName = 
+            user.displayName || 
+            cloudData?.name || 
+            parsedStored?.name || 
+            wizardProfile?.name || 
+            savedWizard?.name || 
+            'Hogwarts Student';
+
           const activeProfile: WizardProfile = {
             id: user.uid,
             uid: user.uid,
-            name: user.displayName || cloudData?.name || 'Hogwarts Student',
+            name: resolvedName,
             email: user.email || undefined,
             photoURL: user.photoURL || undefined,
-            house: cloudData?.house || 'Slytherin',
-            bloodStatus: cloudData?.bloodStatus || 'Half-blood',
-            grade: cloudData?.grade || 'Fifth Year',
-            isGuest: false,
-            registeredAt: cloudData?.registeredAt || new Date().toISOString(),
+            house: cloudData?.house || parsedStored?.house || wizardProfile?.house || savedWizard?.house || 'Slytherin',
+            bloodStatus: cloudData?.bloodStatus || parsedStored?.bloodStatus || wizardProfile?.bloodStatus || savedWizard?.bloodStatus || 'Half-blood',
+            grade: cloudData?.grade || parsedStored?.grade || wizardProfile?.grade || savedWizard?.grade || 'Fifth Year',
+            isGuest: Boolean(user.isAnonymous),
+            registeredAt: cloudData?.registeredAt || parsedStored?.registeredAt || new Date().toISOString(),
             lastActive: new Date().toISOString(),
           };
 

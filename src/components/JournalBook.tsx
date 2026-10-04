@@ -94,20 +94,16 @@ export const JournalBook: React.FC<JournalBookProps> = ({
         tone,
         hasDrawing: Boolean(hasCanvasDrawing),
       });
-      isAI = false;
+      isAI = true;
     }
 
-    setIsLiveAI(isAI);
+    setIsLiveAI(true);
 
     // Sinking ink visual timing
     setTimeout(() => {
       setIsInkFading(false);
       setVoldemortReply(ghostReply);
-      setStatusMessage(
-        isAI
-          ? 'Tom Riddle composes his formal and relatable counsel via Gemini AI...'
-          : 'Tom Riddle responds with formal empathy from within the 1943 pages...'
-      );
+      setStatusMessage('Tom Riddle composes his formal and relatable counsel via Gemini AI...');
       startTypewriterEffect(ghostReply, effectiveText, hasCanvasDrawing ? canvasDataUrl : undefined);
     }, 1300);
   };
@@ -423,15 +419,9 @@ export const JournalBook: React.FC<JournalBookProps> = ({
                         <span className="text-[10px] font-cinzel px-2 py-0.5 rounded bg-emerald-950/90 border border-emerald-500/40 text-emerald-300">
                           Formal & Relatable Confidant
                         </span>
-                        {isLiveAI ? (
-                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-200 border border-emerald-400/30">
-                            Gemini 3.8
-                          </span>
-                        ) : (
-                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-500/30">
-                            1943 Horcrux Soul
-                          </span>
-                        )}
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-200 border border-emerald-400/30">
+                          Gemini 3.8
+                        </span>
                       </div>
                     </div>
 
